@@ -125,6 +125,31 @@ select {
   transition: transform 160ms ease, opacity 160ms ease;
 }
 
+.secondary-button,
+.ghost-button {
+  border-radius: 999px;
+  padding: 13px 18px;
+  cursor: pointer;
+  transition: transform 160ms ease, opacity 160ms ease;
+}
+
+.secondary-button {
+  border: 1px solid rgba(31, 38, 48, 0.18);
+  background: rgba(255, 252, 247, 0.88);
+  color: var(--ink);
+}
+
+.ghost-button {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted);
+}
+
+.secondary-button:hover:not(:disabled),
+.ghost-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
 .primary-button:hover:not(:disabled) {
   transform: translateY(-2px);
 }
@@ -192,6 +217,102 @@ select {
 .panel {
   padding: 24px;
   border-radius: 28px;
+}
+
+.notion-panel {
+  margin-top: 18px;
+}
+
+.notion-row,
+.notion-status-card,
+.notion-actions {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.notion-row {
+  justify-content: space-between;
+  margin-top: 18px;
+  flex-wrap: wrap;
+}
+
+.notion-status-card {
+  padding: 16px 18px;
+  border-radius: 22px;
+  background: rgba(255, 252, 247, 0.78);
+  border: 1px solid var(--line);
+  min-width: min(100%, 520px);
+}
+
+.notion-status-card strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.notion-status-card p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.status-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.status-live {
+  background: var(--teal);
+  box-shadow: 0 0 0 8px rgba(45, 138, 127, 0.12);
+}
+
+.status-warn {
+  background: var(--sun);
+  box-shadow: 0 0 0 8px rgba(242, 184, 69, 0.16);
+}
+
+.status-off {
+  background: rgba(31, 38, 48, 0.35);
+}
+
+.notion-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.notion-feedback-grid {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.workspace-context,
+.feedback-card {
+  margin: 0;
+  padding: 16px 18px;
+  border-radius: 22px;
+  background: rgba(255, 252, 247, 0.78);
+  border: 1px solid var(--line);
+}
+
+.workspace-context {
+  white-space: pre-wrap;
+  overflow-x: auto;
+  font-family: var(--font-mono), monospace;
+  font-size: 0.88rem;
+  line-height: 1.7;
+}
+
+.feedback-card {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.feedback-error {
+  color: #8b2e20;
 }
 
 .panel-header h2,
@@ -402,6 +523,15 @@ select {
 
   .signal-meta {
     align-items: flex-start;
+  }
+
+  .notion-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .notion-actions {
+    justify-content: flex-start;
   }
 }
 

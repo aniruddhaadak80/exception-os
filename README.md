@@ -22,12 +22,28 @@ npm run dev
 
 Then open `http://localhost:3000`.
 
+## Notion MCP integration
+
+This app now includes a real server-side Notion MCP adapter with OAuth, token refresh support, workspace search, and page publishing.
+
+To enable it locally or on Vercel, configure:
+
+- `EXCEPTION_OS_SESSION_SECRET`: long random string used to encrypt server-side session cookies
+
+Optional:
+
+- `NOTION_MCP_SERVER_URL`: defaults to `https://mcp.notion.com`
+- `NOTION_PARENT_PAGE_ID` or `NOTION_PARENT_DATABASE_ID`: custom Notion location for published decision briefs. If omitted, Exception OS publishes to the workspace root when supported by the connected workspace.
+
+Once configured, use the dashboard's `Connect Notion MCP` action to complete OAuth.
+
 ## Demo flow
 
 1. View the live operations board.
 2. Review the active exception queue.
 3. Trigger a new simulated incident from the dashboard.
-4. Inspect the generated decision brief and recommended actions.
+4. Connect Notion MCP and publish the selected decision brief into your workspace.
+5. Sync related workspace context back into the dashboard.
 
 ## Project structure
 
@@ -38,4 +54,12 @@ Then open `http://localhost:3000`.
 
 ## Current implementation scope
 
-This version is a self-contained demo. It does not require external authentication or paid APIs. The Notion MCP integration is represented in the architecture and adapter boundaries so the demo can evolve into a production integration without redesigning the core system.
+This version runs as a polished challenge demo out of the box, and upgrades into a real Notion-connected workflow when the Notion MCP configuration is present. External signal feeds are still simulated, but Notion read and write operations are live once connected.
+
+## Quality checks
+
+```bash
+npm run lint
+npm run test
+npm run build
+```

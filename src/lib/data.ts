@@ -267,3 +267,25 @@ export const simulateSignal = (): DashboardSnapshot => {
 
   return getDashboardSnapshot();
 };
+
+export const getDecisionPayload = (exceptionId: string) => {
+  const snapshot = getDashboardSnapshot();
+  const exceptionRecord = snapshot.exceptions.find((item) => item.id === exceptionId);
+
+  if (!exceptionRecord) {
+    return null;
+  }
+
+  const signal = snapshot.signals.find((item) => item.id === exceptionRecord.signalId);
+  const decision = snapshot.decisions.find((item) => item.exceptionId === exceptionRecord.id);
+
+  if (!signal || !decision) {
+    return null;
+  }
+
+  return {
+    exceptionRecord,
+    signal,
+    decision,
+  };
+};

@@ -1,7 +1,7 @@
 "use client";
 
 import { startTransition, useEffect, useState } from "react";
-import { DashboardSnapshot, DecisionBrief, ExceptionRecord, Signal } from "@/lib/types";
+import { DashboardSnapshot, DecisionBrief, ExceptionRecord, NotionActionResult, NotionStatus, Signal } from "@/lib/types";
 
 const sourceAccent: Record<string, string> = {
   GitHub: "source-github",
@@ -13,7 +13,7 @@ const sourceAccent: Record<string, string> = {
 
 const metricFormatter = new Intl.NumberFormat("en-US");
 
-async function getSnapshot(path: string, init?: RequestInit): Promise<DashboardSnapshot> {
+async function getJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     ...init,
     headers: {
@@ -26,7 +26,7 @@ async function getSnapshot(path: string, init?: RequestInit): Promise<DashboardS
     throw new Error("Unable to load dashboard data.");
   }
 
-  return response.json() as Promise<DashboardSnapshot>;
+  return response.json() as Promise<T>;
 }
 
 function findDecision(snapshot: DashboardSnapshot, exceptionId: string): DecisionBrief | undefined {
@@ -35,21 +35,26 @@ function findDecision(snapshot: DashboardSnapshot, exceptionId: string): Decisio
 
 export function ExceptionOsApp() {
   const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null);
+  const [notionStatus, setNotionStatus] = useState<NotionStatus | null>(null);
   const [selectedExceptionId, setSelectedExceptionId] = useState<string | null>(null);
   const [isPending, setIsPending] = useState(false);
+  const [isNotionBusy, setIsNotionBusy] = useState(false);
+  const [workspaceContext, setWorkspaceContext] = useState<string>("");
+  const [publishResult, setPublishResult] = useState<NotionActionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
 
-    getSnapshot("/api/dashboard")
-      .then((data) => {
+    Promise.all([getJson<DashboardSnapshot>("/api/dashboard"), getJson<NotionStatus>("/api/notion/status")])
+      .then(([data, notion]) => {
         if (!isMounted) {
           return;
         }
 
         setSnapshot(data);
         setSelectedExceptionId(data.exceptions[0]?.id ?? null);
+        setNotionStatus(notion);
       })
       .catch((loadError: unknown) => {
         if (!isMounted) {
@@ -69,7 +74,7 @@ export function ExceptionOsApp() {
     setError(null);
 
     startTransition(() => {
-      getSnapshot("/api/simulate", { method: "POST", body: JSON.stringify({ mode: "incident" }) })
+      getJson<DashboardSnapshot>("/api/simulate", { method: "POST", body: JSON.stringify({ mode: "incident" }) })
         .then((data) => {
           setSnapshot(data);
           setSelectedExceptionId(data.exceptions[0]?.id ?? null);
@@ -81,6 +86,70 @@ export function ExceptionOsApp() {
           setIsPending(false);
         });
     });
+  };
+
+  const handleConnectNotion = () => {
+    window.location.href = "/api/notion/connect";
+  };
+
+  const refreshNotionStatus = async () => {
+    const status = await getJson<NotionStatus>("/api/notion/status");
+    setNotionStatus(status);
+  };
+
+  const handleDisconnectNotion = async () => {
+    setIsNotionBusy(true);
+    setPublishResult(null);
+
+    try {
+      await getJson<NotionStatus>("/api/notion/disconnect", { method: "POST" });
+      await refreshNotionStatus();
+      setWorkspaceContext("");
+    } catch (disconnectError: unknown) {
+      setError(disconnectError instanceof Error ? disconnectError.message : "Failed to disconnect Notion.");
+    } finally {
+      setIsNotionBusy(false);
+    }
+  };
+
+  const handleSyncWorkspace = async () => {
+    setIsNotionBusy(true);
+    setPublishResult(null);
+
+    try {
+      const response = await getJson<{ summary: string; status: NotionStatus }>("/api/notion/sync", {
+        method: "POST",
+        body: JSON.stringify({ query: "runbook incident escalation operating plan" }),
+      });
+      setWorkspaceContext(response.summary);
+      setNotionStatus(response.status);
+    } catch (syncError: unknown) {
+      setError(syncError instanceof Error ? syncError.message : "Failed to sync Notion context.");
+    } finally {
+      setIsNotionBusy(false);
+    }
+  };
+
+  const handlePublishDecision = async () => {
+    if (!selectedException) {
+      return;
+    }
+
+    setIsNotionBusy(true);
+    setPublishResult(null);
+
+    try {
+      const response = await getJson<{ result: NotionActionResult; status: NotionStatus }>("/api/notion/publish", {
+        method: "POST",
+        body: JSON.stringify({ exceptionId: selectedException.id }),
+      });
+      setPublishResult(response.result);
+      setNotionStatus(response.status);
+    } catch (publishError: unknown) {
+      setError(publishError instanceof Error ? publishError.message : "Failed to publish decision.");
+    } finally {
+      setIsNotionBusy(false);
+    }
   };
 
   if (error) {
@@ -111,6 +180,49 @@ export function ExceptionOsApp() {
           </button>
           <p className="hero-note">Latest snapshot: {new Date(snapshot.generatedAt).toLocaleTimeString()}</p>
         </div>
+      </section>
+
+      <section className="panel notion-panel">
+        <PanelHeader
+          title="Notion MCP"
+          subtitle="Live workspace search and publishing now run through a real server-side Notion MCP client with OAuth and token refresh support."
+        />
+        <div className="notion-row">
+          <div className="notion-status-card">
+            <span className={`status-dot ${notionStatus?.ready ? "status-live" : notionStatus?.connected ? "status-warn" : "status-off"}`} />
+            <div>
+              <strong>{notionStatus?.ready ? "Connected" : notionStatus?.connected ? "Needs attention" : "Not connected"}</strong>
+              <p>{notionStatus?.accountLabel ?? notionStatus?.configurationMessage ?? notionStatus?.error ?? "Connect your workspace to enable live Notion actions."}</p>
+            </div>
+          </div>
+          <div className="notion-actions">
+            {notionStatus?.connected ? (
+              <>
+                <button className="secondary-button" onClick={handleSyncWorkspace} disabled={isNotionBusy}>
+                  {isNotionBusy ? "Working..." : "Sync Workspace Context"}
+                </button>
+                <button className="secondary-button" onClick={handlePublishDecision} disabled={isNotionBusy || !notionStatus.canPublish}>
+                  Publish Selected Brief
+                </button>
+                <button className="ghost-button" onClick={handleDisconnectNotion} disabled={isNotionBusy}>
+                  Disconnect
+                </button>
+              </>
+            ) : (
+              <button className="secondary-button" onClick={handleConnectNotion}>
+                Connect Notion MCP
+              </button>
+            )}
+          </div>
+        </div>
+        {(workspaceContext || publishResult || notionStatus?.error || notionStatus?.configurationMessage) && (
+          <div className="notion-feedback-grid">
+            {workspaceContext ? <pre className="workspace-context">{workspaceContext}</pre> : null}
+            {publishResult ? <div className="feedback-card">{publishResult.summary}</div> : null}
+            {!publishResult && notionStatus?.configurationMessage ? <div className="feedback-card">{notionStatus.configurationMessage}</div> : null}
+            {notionStatus?.error ? <div className="feedback-card feedback-error">{notionStatus.error}</div> : null}
+          </div>
+        )}
       </section>
 
       <section className="metrics-grid">
@@ -195,7 +307,7 @@ export function ExceptionOsApp() {
           <ul className="architecture-list">
             <li>Signal connectors ingest GitHub, support, revenue, calendar, and docs events.</li>
             <li>A hybrid decision engine scores severity, business impact, and owner ambiguity.</li>
-            <li>Decision briefs are stored in Notion as the reviewable system of record.</li>
+            <li>Decision briefs are published into Notion through a real MCP client and OAuth flow.</li>
             <li>Human approval closes the loop and feeds future routing quality.</li>
           </ul>
         </div>

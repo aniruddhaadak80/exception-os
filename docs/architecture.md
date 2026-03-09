@@ -85,8 +85,11 @@ The adapter is an architecture boundary for:
 
 Current implementation status:
 
-- Represented as a documented boundary only
-- No live external credential dependency in the MVP demo
+- Implemented as a real server-side MCP client
+- Uses OAuth 2.0 with PKCE and dynamic client registration
+- Stores encrypted session state in HTTP-only cookies
+- Publishes decision briefs into a configured Notion parent page or database
+- Searches connected workspace context through live MCP tool calls
 
 ### 6. Human Review Loop
 
@@ -158,11 +161,11 @@ Workflow:
 
 To convert this MVP into a challenge-grade integrated system:
 
-1. Replace the in-memory store with persistent storage.
+1. Replace the in-memory incident generator with persistent event storage.
 2. Add real source connectors for GitHub, Stripe, support, or calendar.
-3. Implement a Notion MCP adapter that syncs databases and pages.
+3. Map published decision pages into a dedicated Notion data source schema.
 4. Add a background queue for classification jobs.
-5. Add auth and user-specific workspaces.
+5. Add multi-user auth and user-specific workspaces.
 6. Add audit logs and approval analytics.
 
 ## Deployment Plan

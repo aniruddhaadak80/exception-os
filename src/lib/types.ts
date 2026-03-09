@@ -56,3 +56,22 @@ export type DashboardSnapshot = {
   exceptions: ExceptionRecord[];
   decisions: DecisionBrief[];
 };
+
+export type NotionStatus = {
+  connected: boolean;
+  ready: boolean;
+  canPublish: boolean;
+  serverUrl: string;
+  accountLabel?: string;
+  workspaceLabel?: string;
+  availableTools: string[];
+  lastSyncSummary?: string;
+  error?: string;
+  configurationMessage?: string;
+};
+
+export type NotionActionResult = {
+  ok: boolean;
+  summary: string;
+  pageUrl?: string;
+};
