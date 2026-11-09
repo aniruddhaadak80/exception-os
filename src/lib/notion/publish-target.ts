@@ -34,11 +34,16 @@ export function parseNotionPublishTarget(input: string): NotionPublishTarget {
     throw new Error("Enter a Notion page URL or page ID before publishing.");
   }
 
-  const prefixedMatch = trimmed.match(/^(page_id|database_id|data_source_id)\s*:\s*(.+)$/i);
+  if (trimmed.length > 2048) {
+    throw new Error("The provided Notion target is too long.");
+  }
 
-  if (prefixedMatch) {
-    const type = prefixedMatch[1].toLowerCase() as NotionPublishTarget["type"];
-    const id = normalizeId(prefixedMatch[2]) ?? extractIdFromUrl(prefixedMatch[2]);
+  const prefixedHeader = /^(page_id|database_id|data_source_id)\s*:/i.exec(trimmed);
+
+  if (prefixedHeader) {
+    const type = prefixedHeader[1].toLowerCase() as NotionPublishTarget["type"];
+    const remainder = trimmed.slice(prefixedHeader[0].length).trim();
+    const id = normalizeId(remainder) ?? extractIdFromUrl(remainder);
 
     if (!id) {
       throw new Error("The provided Notion target is not a valid page, database, or data source ID.");
